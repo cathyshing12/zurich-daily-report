@@ -2,26 +2,31 @@ name: Daily Zurich Report
 
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    - cron: '0 0 * * *'  # Runs every day at midnight UTC
+  workflow_dispatch:     # Allows manual trigger
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Run script
-        run: python report_generator.py
+      - name: Install dependencies
+        run: pip install -r requirements.txt || echo "No requirements.txt"
+
+      - name: Run report script
+        run: python3 report_generator.py
 
       - name: Commit and push index.html
         run: |
-          git config --global user.name "cathyshing12"
-          git config --global user.email "cathyshing12@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
           git commit -m "Auto-update daily report" || echo "No changes to commit"
           git push
