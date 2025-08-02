@@ -1,3 +1,5 @@
+print("Generating daily travel report...")
+
 from datetime import datetime
 
 html = f"""<!DOCTYPE html>
@@ -13,3 +15,5 @@ html = f"""<!DOCTYPE html>
 
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
+    
+print("Report saved to index.html")
