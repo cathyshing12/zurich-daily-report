@@ -1,4 +1,4 @@
-# Enhanced report_generator.py with deep scraping, Google Trends, LIHKG, and suggestions
+# Enhanced report_generator.py with external JSON content for promos
 
 import requests
 import feedparser
@@ -13,51 +13,23 @@ import os
 feed = feedparser.parse("https://www.breakingtravelnews.com/rss/")
 travel_news = "".join([f"<p><a href='{e.link}'>{e.title}</a></p>" for e in feed.entries[:5]])
 
-# --- Travel Promo Scraper ---
-def get_promos():
-    promos = {}
-    headers = {"User-Agent": "Mozilla/5.0"}
+# --- Airline Promos from JSON ---
+try:
+    with open("airline_promos.json", "r", encoding="utf-8") as f:
+        airline_promos = json.load(f)
+except:
+    airline_promos = []
 
-    try:
-        r = requests.get("https://www.hkexpress.com/en-hk/promotions/", headers=headers)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        title = soup.select_one(".promo-heading") or soup.select_one(".promotion-title")
-        promos['HK Express'] = title.text.strip() if title else "No headline found"
-    except: promos['HK Express'] = "(Fetch failed)"
-
-    try:
-        r = requests.get("https://www.cathaypacific.com/cx/en_HK/offers.html", headers=headers)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        offers = soup.select(".offer-card__title")
-        promos['Cathay'] = offers[0].text.strip() if offers else "No offer found"
-    except: promos['Cathay'] = "(Fetch failed)"
-
-    try:
-        r = requests.get("https://www.klook.com/en-HK/deals/", headers=headers)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        deal = soup.find("h2")
-        promos['Klook'] = deal.text.strip() if deal else "No promo found"
-    except: promos['Klook'] = "(Fetch failed)"
-
-    try:
-        r = requests.get("https://www.trip.com/deals/", headers=headers)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        headline = soup.find("h2")
-        promos['Trip.com'] = headline.text.strip() if headline else "No headline"
-    except: promos['Trip.com'] = "(Fetch failed)"
-
-    return promos
-
-promos = get_promos()
-promo_html = "".join([f"<p><b>{k}</b>: {v}</p>" for k, v in promos.items()])
+airline_html = "".join([f"<h3>{p['title']}</h3><p>{p['content']}</p>" for p in airline_promos])
 
 # --- Insurance Campaigns from JSON ---
 try:
     with open("insurance_campaigns.json", "r", encoding="utf-8") as f:
-        campaigns = json.load(f)
+        insurance_promos = json.load(f)
 except:
-    campaigns = {"Fallback": "Unable to load campaigns."}
-insurance_html = "".join([f"<p><b>{k}</b>: {v}</p>" for k, v in campaigns.items()])
+    insurance_promos = []
+
+insurance_html = "".join([f"<h3>{p['title']}</h3><p>{p['content']}</p>" for p in insurance_promos])
 
 # --- Google Trends ---
 pytrends = TrendReq(hl='en-US', tz=480)
@@ -106,8 +78,8 @@ if any("日本" in kw or "Japan" in kw for kw in trend_keywords + lihkg_titles):
 elif "紅雨" in weather:
     suggestion = "<p>紅雨警告，主打家居保險 + 財物保障</p>"
 
-# --- Chart (static) ---
-x = list(campaigns.keys())
+# --- Chart (static demo) ---
+x = [p['title'][:10] for p in insurance_promos]
 y = [20 + i*5 for i in range(len(x))]
 plt.figure(figsize=(6, 4))
 plt.bar(x, y, color='teal')
@@ -121,7 +93,7 @@ html_content = f"""
 <h1>Zurich Daily Travel Report</h1>
 <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
 <h2>1. Travel News</h2>{travel_news}
-<h2>2. Travel Promos</h2>{promo_html}
+<h2>2. Travel Promos</h2>{airline_html}
 <h2>3. Insurance Campaigns</h2>{insurance_html}
 <h2>4. Google Trends</h2>{trends_html}
 <h2>5. LIHKG Posts</h2>{lihkg_html}
