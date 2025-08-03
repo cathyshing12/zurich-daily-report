@@ -2,8 +2,8 @@ name: Update Daily Travel Report
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs every day at 08:00 HKT (00:00 UTC)
-  workflow_dispatch:     # Allow manual trigger
+    - cron: '0 0 * * *'  # Every day at 08:00 HKT
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,7 +28,8 @@ jobs:
 
     - name: Commit and push index.html and chart.png
       run: |
-        git config --global user.name 'cathyshing12'
-        git config --global user.email 'cathyshing12@users.noreply.github.com'
+        git config --global user.name "cathyshing12"
+        git config --global user.email "cathyshing12@users.noreply.github.com"
         git add index.html chart.png
-        git commit -m "Auto-update report an
+        git commit -m "Auto-update report and chart" || echo "No changes to commit"
+        git push
