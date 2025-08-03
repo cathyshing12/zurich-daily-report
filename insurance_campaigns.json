@@ -1,7 +1,10 @@
-{
-  "AXA": "10% off annual travel plan",
-  "Bowtie": "Summer offer: extra coverage for delayed flights",
-  "FWD": "Free airport lounge access with plan over $500",
-  "Blue Cross": "Limited-time 15% discount on family travel insurance",
-  "OneDegree": "COVID-19 travel disruption add-on now free"
-}
+[
+  {
+    "title": "AXA – MoneySmart Summer Trip Exclusive",
+    "content": "From 28 Jul to 10 Aug 2025, get gifts worth HK$3,100, a 7-month VHIS waiver, Birdie SIM, and prize draw for luggage, lounge pass or AirTag."
+  },
+  {
+    "title": "FWD – Summer Flash Sale",
+    "content": "From 29–31 Jul, get Trip.com voucher for claims over HK$200; extra prizes apply for purchases above HK$150."
+  }
+]
