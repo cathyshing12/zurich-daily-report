@@ -1,4 +1,4 @@
-# report_generator.py with real-time promo scraping, insurance JSON, and dynamic suggestions
+# Enhanced report_generator.py with deep scraping, Google Trends, LIHKG, and suggestions
 
 import requests
 import feedparser
@@ -13,35 +13,42 @@ import os
 feed = feedparser.parse("https://www.breakingtravelnews.com/rss/")
 travel_news = "".join([f"<p><a href='{e.link}'>{e.title}</a></p>" for e in feed.entries[:5]])
 
-# --- Travel Promos Scraping ---
-def scrape_promos():
+# --- Travel Promo Scraper ---
+def get_promos():
     promos = {}
+    headers = {"User-Agent": "Mozilla/5.0"}
+
     try:
-        r = requests.get("https://www.hkexpress.com/en-hk/promotions/")
+        r = requests.get("https://www.hkexpress.com/en-hk/promotions/", headers=headers)
         soup = BeautifulSoup(r.text, 'html.parser')
-        promos['HK Express'] = soup.select_one(".promo-heading, .promotion-title").get_text(strip=True)
-    except: promos['HK Express'] = "(Failed to fetch)"
+        title = soup.select_one(".promo-heading") or soup.select_one(".promotion-title")
+        promos['HK Express'] = title.text.strip() if title else "No headline found"
+    except: promos['HK Express'] = "(Fetch failed)"
+
     try:
-        r = requests.get("https://www.cathaypacific.com/cx/en_HK/offers.html")
+        r = requests.get("https://www.cathaypacific.com/cx/en_HK/offers.html", headers=headers)
         soup = BeautifulSoup(r.text, 'html.parser')
-        item = soup.select_one(".offer-card__title")
-        promos['Cathay'] = item.get_text(strip=True) if item else "(No offer)"
-    except: promos['Cathay'] = "(Failed to fetch)"
+        offers = soup.select(".offer-card__title")
+        promos['Cathay'] = offers[0].text.strip() if offers else "No offer found"
+    except: promos['Cathay'] = "(Fetch failed)"
+
     try:
-        r = requests.get("https://www.klook.com/en-HK/deals/")
+        r = requests.get("https://www.klook.com/en-HK/deals/", headers=headers)
         soup = BeautifulSoup(r.text, 'html.parser')
-        klook_text = soup.find("h2")
-        promos['Klook'] = klook_text.get_text(strip=True) if klook_text else "(No deals)"
-    except: promos['Klook'] = "(Failed to fetch)"
+        deal = soup.find("h2")
+        promos['Klook'] = deal.text.strip() if deal else "No promo found"
+    except: promos['Klook'] = "(Fetch failed)"
+
     try:
-        r = requests.get("https://www.trip.com/deals/")
+        r = requests.get("https://www.trip.com/deals/", headers=headers)
         soup = BeautifulSoup(r.text, 'html.parser')
-        trip_title = soup.find("h2")
-        promos['Trip.com'] = trip_title.get_text(strip=True) if trip_title else "(No deals)"
-    except: promos['Trip.com'] = "(Failed to fetch)"
+        headline = soup.find("h2")
+        promos['Trip.com'] = headline.text.strip() if headline else "No headline"
+    except: promos['Trip.com'] = "(Fetch failed)"
+
     return promos
 
-promos = scrape_promos()
+promos = get_promos()
 promo_html = "".join([f"<p><b>{k}</b>: {v}</p>" for k, v in promos.items()])
 
 # --- Insurance Campaigns from JSON ---
@@ -52,27 +59,37 @@ except:
     campaigns = {"Fallback": "Unable to load campaigns."}
 insurance_html = "".join([f"<p><b>{k}</b>: {v}</p>" for k, v in campaigns.items()])
 
-# --- Google Trends (HK) ---
+# --- Google Trends ---
 pytrends = TrendReq(hl='en-US', tz=480)
-trends_html, trend_keywords = "<ul>", []
+trend_keywords = []
+trends_html = "<ul>"
 try:
-    trending = pytrends.trending_searches(pn='hong_kong').head(5)
-    trend_keywords = list(trending[0])
-    for kw in trend_keywords:
-        trends_html += f"<li>{kw}</li>"
-except: trends_html += "<li>Google Trends unavailable</li>"
+    pytrends.build_payload(["travel", "Japan", "Korea"], geo='HK', timeframe='now 7-d')
+    interest = pytrends.related_queries()
+    for kw, val in interest.items():
+        top = val.get('top')
+        if top is not None:
+            for _, row in top.head(3).iterrows():
+                trend_keywords.append(row['query'])
+                trends_html += f"<li>{row['query']}</li>"
+except Exception as e:
+    trends_html += f"<li>Trends unavailable</li>"
 trends_html += "</ul>"
 
 # --- LIHKG Posts ---
-lihkg_html, lihkg_titles = "<ul>", []
+lihkg_titles = []
+lihkg_html = "<ul>"
 try:
-    r = requests.get('https://lihkg.com/api_v2/thread/category/15?page=1')
-    posts = r.json().get('response', {}).get('items', [])[:5]
-    for post in posts:
-        title = post['title']
-        lihkg_titles.append(title)
-        lihkg_html += f'<li>{title}</li>'
-except: lihkg_html += "<li>LIHKG data not available</li>"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    res = requests.get("https://lihkg.com/api_v2/thread/category/15?page=1", headers=headers)
+    if res.status_code == 200:
+        posts = res.json().get("response", {}).get("items", [])[:5]
+        for post in posts:
+            title = post['title']
+            lihkg_titles.append(title)
+            lihkg_html += f"<li>{title}</li>"
+except:
+    lihkg_html += "<li>LIHKG fetch failed</li>"
 lihkg_html += "</ul>"
 
 # --- Weather ---
@@ -82,14 +99,14 @@ except:
     weather = "Weather unavailable"
 weather_html = f"<p>{weather}</p>"
 
-# --- Marketing Suggestion (dynamic) ---
+# --- Dynamic Suggestion Engine ---
 suggestion = "<p>推出7折旅遊保險優惠，搭配熱門目的地推廣</p>"
-if any(kw for kw in trend_keywords + lihkg_titles if '日本' in kw or 'Japan' in kw):
-    suggestion = "<p>【推介】日本成熱門關鍵字，建議推限時旅遊保險優惠</p>"
-elif '紅雨' in weather:
-    suggestion = "<p>【天氣提示】紅雨生效，推家居保險更有共鳴</p>"
+if any("日本" in kw or "Japan" in kw for kw in trend_keywords + lihkg_titles):
+    suggestion = "<p>日本熱門話題推升，建議加推日本旅行保優惠</p>"
+elif "紅雨" in weather:
+    suggestion = "<p>紅雨警告，主打家居保險 + 財物保障</p>"
 
-# --- Chart (static for demo) ---
+# --- Chart (static) ---
 x = list(campaigns.keys())
 y = [20 + i*5 for i in range(len(x))]
 plt.figure(figsize=(6, 4))
@@ -110,10 +127,11 @@ html_content = f"""
 <h2>5. LIHKG Posts</h2>{lihkg_html}
 <h2>6. Weather</h2>{weather_html}
 <h2>7. Suggestion</h2>{suggestion}
-<h2>8. Insurance Buzz Chart</h2><img src="chart.png" width="600"/>
+<h2>8. Insurance Buzz Chart</h2><img src='chart.png' width='600'/>
 </body></html>
 """
 
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html_content)
-print("✅ Report saved to index.html")
+
+print("✅ Daily report generated: index.html")
