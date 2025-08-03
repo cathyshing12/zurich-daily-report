@@ -1,4 +1,4 @@
-# Enhanced report_generator.py with external JSON content for promos
+# Enhanced report_generator.py with styled HTML and chart saving
 
 import requests
 import feedparser
@@ -20,7 +20,7 @@ try:
 except:
     airline_promos = []
 
-airline_html = "".join([f"<h3>{p['title']}</h3><p>{p['content']}</p>" for p in airline_promos])
+airline_html = "".join([f"<div class='card'><h3>{p['title']}</h3><p>{p['content']}</p></div>" for p in airline_promos])
 
 # --- Insurance Campaigns from JSON ---
 try:
@@ -29,7 +29,7 @@ try:
 except:
     insurance_promos = []
 
-insurance_html = "".join([f"<h3>{p['title']}</h3><p>{p['content']}</p>" for p in insurance_promos])
+insurance_html = "".join([f"<div class='card'><h3>{p['title']}</h3><p>{p['content']}</p></div>" for p in insurance_promos])
 
 # --- Google Trends ---
 pytrends = TrendReq(hl='en-US', tz=480)
@@ -44,8 +44,8 @@ try:
             for _, row in top.head(3).iterrows():
                 trend_keywords.append(row['query'])
                 trends_html += f"<li>{row['query']}</li>"
-except Exception as e:
-    trends_html += f"<li>Trends unavailable</li>"
+except:
+    trends_html += "<li>Trends unavailable</li>"
 trends_html += "</ul>"
 
 # --- LIHKG Posts ---
@@ -87,11 +87,19 @@ plt.title('Insurance Campaign Buzz')
 plt.tight_layout()
 plt.savefig('chart.png')
 
-# --- Combine into HTML ---
+# --- Combine into styled HTML ---
 html_content = f"""
-<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Zurich Daily Report</title></head><body>
+<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Zurich Daily Report</title>
+<style>
+  body {{ font-family: Arial; background: #f8f9fa; color: #333; padding: 20px; }}
+  h1 {{ color: #005BAC; }}
+  h2 {{ border-bottom: 2px solid #ddd; padding-bottom: 5px; color: #0072C6; }}
+  .card {{ background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+  img {{ max-width: 100%; margin-top: 10px; }}
+</style>
+</head><body>
 <h1>Zurich Daily Travel Report</h1>
-<p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+<p><i>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i></p>
 <h2>1. Travel News</h2>{travel_news}
 <h2>2. Travel Promos</h2>{airline_html}
 <h2>3. Insurance Campaigns</h2>{insurance_html}
@@ -99,11 +107,11 @@ html_content = f"""
 <h2>5. LIHKG Posts</h2>{lihkg_html}
 <h2>6. Weather</h2>{weather_html}
 <h2>7. Suggestion</h2>{suggestion}
-<h2>8. Insurance Buzz Chart</h2><img src='chart.png' width='600'/>
+<h2>8. Insurance Buzz Chart</h2><img src='chart.png' />
 </body></html>
 """
 
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print("✅ Daily report generated: index.html")
+print("✅ Styled daily report generated: index.html")
