@@ -25,6 +25,7 @@ jobs:
           pip install beautifulsoup4  # <-- This is correct
           pip install matplotlib
           pip install pandas
+          pip install pytrends  # <-- Add this line
 
       - name: Run report script
         run: python3 report_generator.py
